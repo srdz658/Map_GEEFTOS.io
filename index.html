@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Carte de mes amis</title>
+  <title>Carte des GEEFTOOOOS et CIE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link
@@ -169,7 +169,7 @@
   // Charger les amis au chargement
   async function loadFriends() {
     try {
-      showStatus('Chargement des amis...');
+      showStatus('Chargement des GEEFTOS...');
       console.log("GET", API_URL);
       const response = await fetch(API_URL);
       console.log("GET response status:", response.status);
@@ -177,7 +177,7 @@
       console.log("GET data:", data);
 
       if (!Array.isArray(data) || data.length === 0) {
-        showStatus('Aucun ami enregistré pour l’instant.');
+        showStatus('Aucun GEEFTOS enregistré pour l’instant.');
         return;
       }
 
@@ -191,7 +191,7 @@
         map.fitBounds(bounds, { padding: [30, 30] });
       }
 
-      showStatus(`Amis chargés: ${data.length}`);
+      showStatus(`GEEFTOS chargés: ${data.length}`);
     } catch (err) {
       console.error('Erreur loadFriends', err);
       showStatus('Erreur en chargeant les données.');
