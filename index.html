@@ -30,7 +30,10 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    #top-bar input {
+    #top-bar input, #top-bar label {
+      font-size: 14px;
+    }
+    #top-bar input[type="text"] {
       padding: 4px 6px;
     }
     #map {
@@ -48,7 +51,11 @@
   <form id="add-friend-form">
     <input type="text" id="name" placeholder="Ton prénom" required />
     <input type="text" id="address" placeholder="Ta ville (pas l’adresse exacte)" required />
-    <input type="text" id="comment" value="Waa, j'adorerais accueillir Stanislas chez moi!" />
+    <input type="text" id="comment" placeholder="Salut, je suis ici !" />
+    <label>
+      <input type="checkbox" id="status-sdf" />
+      SDF
+    </label>
     <button type="submit">Me placer / mettre à jour</button>
     <span id="status"></span>
   </form>
@@ -63,7 +70,6 @@
 ></script>
 
 <script>
-  // URL de ton Apps Script
   const API_URL = "https://script.google.com/macros/s/AKfycbwWTaw77mT9sts_MdpAunct1kmCtJD7ujaWFzDWD0Q4D9XmOzFbttRsZpO2nwcaEoMI/exec";
 
   console.log("API_URL =", API_URL);
@@ -77,20 +83,35 @@
 
   const statusSpan = document.getElementById('status');
   const form = document.getElementById('add-friend-form');
+  const commentInput = document.getElementById('comment');
+  const statusCheckbox = document.getElementById('status-sdf');
+
+  // pour supprimer l'ancien marker quand on met à jour
+  const markersByName = {};
 
   function showStatus(message) {
     console.log("STATUS:", message);
     statusSpan.textContent = message;
   }
 
-  function addMarker(friend) {
+  function addOrReplaceMarker(friend) {
+    const name = friend.name;
     const lat = parseFloat(friend.lat);
     const lng = parseFloat(friend.lng);
-    const comment = friend.comment && friend.comment.trim() !== "" ? friend.comment : "(pas de message)";
+    const comment = friend.comment && friend.comment.trim() !== "" ? friend.comment : "Salut, je suis ici !";
+    const status = friend.status === "SDF" ? " (SDF)" : "";
+
+    // supprimer ancien marker si existe
+    if (markersByName[name]) {
+      map.removeLayer(markersByName[name]);
+    }
+
     const marker = L.marker([lat, lng]).addTo(map);
     marker.bindPopup(
-      `<strong>${friend.name}</strong><br>${friend.address}<br><em>${comment}</em>`
+      `<strong>${name}${status}</strong><br>${friend.address}<br><em>${comment}</em>`
     );
+
+    markersByName[name] = marker;
     return marker;
   }
 
@@ -111,7 +132,7 @@
 
       const bounds = [];
       data.forEach(friend => {
-        addMarker(friend);
+        addOrReplaceMarker(friend);
         bounds.push([parseFloat(friend.lat), parseFloat(friend.lng)]);
       });
 
@@ -159,7 +180,7 @@
     };
   }
 
-  // Sauvegarde (avec Content-Type simple pour éviter le préflight CORS)
+  // Sauvegarde (Content-Type "simple" pour éviter le préflight CORS)
   async function saveFriend(friend) {
     console.log("POST", API_URL, "body:", friend);
     const response = await fetch(API_URL, {
@@ -187,7 +208,11 @@
 
     const name = document.getElementById('name').value.trim();
     const address = document.getElementById('address').value.trim();
-    const comment = document.getElementById('comment').value.trim();
+    let comment = commentInput.value.trim();
+    if (!comment) {
+      comment = "Salut, je suis ici !";
+    }
+    const statusValue = statusCheckbox.checked ? "SDF" : "";
 
     if (!name || !address) {
       showStatus('Remplis nom et adresse.');
@@ -210,7 +235,8 @@
       address: address,
       lat: coords.lat,
       lng: coords.lng,
-      comment: comment
+      comment: comment,
+      status: statusValue
     };
 
     // Étape 2 : sauvegarde
@@ -224,7 +250,7 @@
       return;
     }
 
-    addMarker(friend);
+    addOrReplaceMarker(friend);
     map.setView([coords.lat, coords.lng], 10);
 
     if (result.updated) {
@@ -234,8 +260,7 @@
     }
 
     form.reset();
-    // remettre le texte par défaut
-    document.getElementById('comment').value = "Salut, je suis ici !";
+    // pas de valeur par défaut, juste le placeholder gris
   });
 
   // Démarrage
