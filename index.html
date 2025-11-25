@@ -35,7 +35,7 @@
     }
     #map {
       width: 100%;
-      height: calc(100% - 48px);
+      height: calc(100% - 56px);
     }
     #status {
       font-size: 13px;
@@ -48,7 +48,8 @@
   <form id="add-friend-form">
     <input type="text" id="name" placeholder="Ton prénom" required />
     <input type="text" id="address" placeholder="Ta ville (pas l’adresse exacte)" required />
-    <button type="submit">Me placer</button>
+    <input type="text" id="comment" value="Waa, j'adorerais accueillir Stanislas chez moi!" />
+    <button type="submit">Me placer / mettre à jour</button>
     <span id="status"></span>
   </form>
 </div>
@@ -62,7 +63,7 @@
 ></script>
 
 <script>
-  // Mets ton URL Apps Script ici
+  // URL de ton Apps Script
   const API_URL = "https://script.google.com/macros/s/AKfycbwWTaw77mT9sts_MdpAunct1kmCtJD7ujaWFzDWD0Q4D9XmOzFbttRsZpO2nwcaEoMI/exec";
 
   console.log("API_URL =", API_URL);
@@ -83,9 +84,12 @@
   }
 
   function addMarker(friend) {
-    const marker = L.marker([friend.lat, friend.lng]).addTo(map);
+    const lat = parseFloat(friend.lat);
+    const lng = parseFloat(friend.lng);
+    const comment = friend.comment && friend.comment.trim() !== "" ? friend.comment : "(pas de message)";
+    const marker = L.marker([lat, lng]).addTo(map);
     marker.bindPopup(
-      `<strong>${friend.name}</strong><br>${friend.address}`
+      `<strong>${friend.name}</strong><br>${friend.address}<br><em>${comment}</em>`
     );
     return marker;
   }
@@ -107,11 +111,8 @@
 
       const bounds = [];
       data.forEach(friend => {
-        // Conversion au cas où lat/lng viennent comme string
-        friend.lat = parseFloat(friend.lat);
-        friend.lng = parseFloat(friend.lng);
         addMarker(friend);
-        bounds.push([friend.lat, friend.lng]);
+        bounds.push([parseFloat(friend.lat), parseFloat(friend.lng)]);
       });
 
       if (bounds.length > 0) {
@@ -158,27 +159,27 @@
     };
   }
 
+  // Sauvegarde (avec Content-Type simple pour éviter le préflight CORS)
   async function saveFriend(friend) {
-  console.log("POST", API_URL, "body:", friend);
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    // Content-Type "simple" pour éviter le préflight CORS
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify(friend)
-  });
+    console.log("POST", API_URL, "body:", friend);
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(friend)
+    });
 
-  console.log("POST response status:", response.status);
+    console.log("POST response status:", response.status);
 
-  const data = await response.json();
-  console.log("POST response data:", data);
+    const data = await response.json();
+    console.log("POST response data:", data);
 
-  if (data.status !== 'ok') {
-    throw new Error('Erreur côté API');
+    if (data.status !== 'ok') {
+      throw new Error('Erreur côté API');
+    }
+    return data;
   }
-}
-
 
   // Gestion du formulaire
   form.addEventListener('submit', async (event) => {
@@ -186,6 +187,7 @@
 
     const name = document.getElementById('name').value.trim();
     const address = document.getElementById('address').value.trim();
+    const comment = document.getElementById('comment').value.trim();
 
     if (!name || !address) {
       showStatus('Remplis nom et adresse.');
@@ -207,13 +209,15 @@
       name: name,
       address: address,
       lat: coords.lat,
-      lng: coords.lng
+      lng: coords.lng,
+      comment: comment
     };
 
     // Étape 2 : sauvegarde
     showStatus('Sauvegarde sur le serveur...');
+    let result;
     try {
-      await saveFriend(friend);
+      result = await saveFriend(friend);
     } catch (err) {
       console.error('Erreur API', err);
       showStatus("Erreur côté serveur (API).");
@@ -223,8 +227,15 @@
     addMarker(friend);
     map.setView([coords.lat, coords.lng], 10);
 
-    showStatus('Position ajoutée et sauvegardée.');
+    if (result.updated) {
+      showStatus('Position mise à jour.');
+    } else {
+      showStatus('Position ajoutée.');
+    }
+
     form.reset();
+    // remettre le texte par défaut
+    document.getElementById('comment').value = "Salut, je suis ici !";
   });
 
   // Démarrage
