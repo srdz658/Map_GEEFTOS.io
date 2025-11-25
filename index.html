@@ -94,7 +94,7 @@
     <input type="text" id="comment" placeholder="Salut, je suis ici !" />
     <label>
       <input type="checkbox" id="status-sdf" />
-      SDF
+      VDI
     </label>
     <button type="submit">Me placer / mettre à jour</button>
     <span id="status"></span>
@@ -148,7 +148,7 @@
     const lat = parseFloat(friend.lat);
     const lng = parseFloat(friend.lng);
     const comment = friend.comment && friend.comment.trim() !== "" ? friend.comment : "Salut, je suis ici !";
-    const status = friend.status === "SDF" ? " (SDF)" : "";
+    const status = friend.status === "VDI" ? " (VDI)" : "";
 
     // supprimer ancien marker si existe
     if (markersByName[name]) {
@@ -261,7 +261,7 @@
     if (!comment) {
       comment = "Salut, je suis ici !";
     }
-    const statusValue = statusCheckbox.checked ? "SDF" : "";
+    const statusValue = statusCheckbox.checked ? "VDI" : "";
 
     if (!name || !address) {
       showStatus('Remplis nom et adresse.');
