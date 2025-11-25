@@ -159,24 +159,26 @@
   }
 
   async function saveFriend(friend) {
-    console.log("POST", API_URL, "body:", friend);
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(friend)
-    });
+  console.log("POST", API_URL, "body:", friend);
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    // Content-Type "simple" pour éviter le préflight CORS
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(friend)
+  });
 
-    console.log("POST response status:", response.status);
+  console.log("POST response status:", response.status);
 
-    const data = await response.json();
-    console.log("POST response data:", data);
+  const data = await response.json();
+  console.log("POST response data:", data);
 
-    if (data.status !== 'ok') {
-      throw new Error('Erreur côté API');
-    }
+  if (data.status !== 'ok') {
+    throw new Error('Erreur côté API');
   }
+}
+
 
   // Gestion du formulaire
   form.addEventListener('submit', async (event) => {
