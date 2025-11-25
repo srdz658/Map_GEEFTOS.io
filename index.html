@@ -62,8 +62,10 @@
 ></script>
 
 <script>
-  // A adapter: colle ici l'URL de ton Apps Script
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwWTaw77mT9sts_MdpAunct1kmCtJD7ujaWFzDWD0Q4D9XmOzFbttRsZpO2nwcaEoMI/exec';
+  // Mets ton URL Apps Script ici
+  const API_URL = "https://script.google.com/macros/s/AKfycbwWTaw77mT9sts_MdpAunct1kmCtJD7ujaWFzDWD0Q4D9XmOzFbttRsZpO2nwcaEoMI/exec";
+
+  console.log("API_URL =", API_URL);
 
   const map = L.map('map').setView([46.5, 2.5], 5);
 
@@ -76,6 +78,7 @@
   const form = document.getElementById('add-friend-form');
 
   function showStatus(message) {
+    console.log("STATUS:", message);
     statusSpan.textContent = message;
   }
 
@@ -87,20 +90,26 @@
     return marker;
   }
 
-  // Charger les points déjà enregistrés
+  // Charger les amis au chargement
   async function loadFriends() {
     try {
       showStatus('Chargement des amis...');
+      console.log("GET", API_URL);
       const response = await fetch(API_URL);
+      console.log("GET response status:", response.status);
       const data = await response.json();
+      console.log("GET data:", data);
 
-      if (data.length === 0) {
+      if (!Array.isArray(data) || data.length === 0) {
         showStatus('Aucun ami enregistré pour l’instant.');
         return;
       }
 
       const bounds = [];
       data.forEach(friend => {
+        // Conversion au cas où lat/lng viennent comme string
+        friend.lat = parseFloat(friend.lat);
+        friend.lng = parseFloat(friend.lng);
         addMarker(friend);
         bounds.push([friend.lat, friend.lng]);
       });
@@ -111,7 +120,7 @@
 
       showStatus(`Amis chargés: ${data.length}`);
     } catch (err) {
-      console.error(err);
+      console.error('Erreur loadFriends', err);
       showStatus('Erreur en chargeant les données.');
     }
   }
@@ -121,18 +130,24 @@
     const url = 'https://nominatim.openstreetmap.org/search?format=json&q='
       + encodeURIComponent(address);
 
+    console.log("Geocode URL:", url);
+
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json'
       }
     });
 
+    console.log("Geocode status:", response.status);
+
     if (!response.ok) {
       throw new Error('Erreur réseau géocodage');
     }
 
     const data = await response.json();
-    if (data.length === 0) {
+    console.log("Geocode data:", data);
+
+    if (!Array.isArray(data) || data.length === 0) {
       throw new Error('Adresse introuvable');
     }
 
@@ -143,8 +158,8 @@
     };
   }
 
-  // Envoyer les données à l’API (sauvegarde)
   async function saveFriend(friend) {
+    console.log("POST", API_URL, "body:", friend);
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -153,7 +168,11 @@
       body: JSON.stringify(friend)
     });
 
+    console.log("POST response status:", response.status);
+
     const data = await response.json();
+    console.log("POST response data:", data);
+
     if (data.status !== 'ok') {
       throw new Error('Erreur côté API');
     }
@@ -171,32 +190,42 @@
       return;
     }
 
+    // Étape 1 : géocodage
+    let coords;
+    showStatus('Recherche de ta position...');
     try {
-      showStatus('Recherche de ta position...');
-      const coords = await geocode(address);
-
-      const friend = {
-        name: name,
-        address: address,
-        lat: coords.lat,
-        lng: coords.lng
-      };
-
-      showStatus('Sauvegarde sur le serveur...');
-      await saveFriend(friend);
-
-      addMarker(friend);
-      map.setView([coords.lat, coords.lng], 10);
-
-      showStatus('Position ajoutée et sauvegardée.');
-      form.reset();
+      coords = await geocode(address);
     } catch (err) {
-      console.error(err);
-      showStatus('Impossible de te placer (adresse ou serveur).');
+      console.error('Erreur geocode', err);
+      showStatus("Adresse introuvable. Essaie juste ta ville (ex: Lyon).");
+      return;
     }
+
+    const friend = {
+      name: name,
+      address: address,
+      lat: coords.lat,
+      lng: coords.lng
+    };
+
+    // Étape 2 : sauvegarde
+    showStatus('Sauvegarde sur le serveur...');
+    try {
+      await saveFriend(friend);
+    } catch (err) {
+      console.error('Erreur API', err);
+      showStatus("Erreur côté serveur (API).");
+      return;
+    }
+
+    addMarker(friend);
+    map.setView([coords.lat, coords.lng], 10);
+
+    showStatus('Position ajoutée et sauvegardée.');
+    form.reset();
   });
 
-  // Démarrage: on charge les points existants
+  // Démarrage
   loadFriends();
 </script>
 </body>
